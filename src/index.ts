@@ -11,10 +11,12 @@ import * as fs from "fs"; // Import the fs module
 const CONSOLE_PRINT_ENCRYPTED_STRING = true;
 
 // Function to take inputs from the user
-function getUserInputs() {
-  const numInputs = readlineSync.questionInt("Enter the number of inputs: ");
+function getUserInputs(defaultInput:number) {
+  let numInputs = defaultInput;
+  if(!defaultInput){
+     numInputs = readlineSync.questionInt("Enter the number of inputs: ");
+  }
   const inputs = [];
-
   for (let i = 0; i < numInputs; i++) {
     const input = readlineSync.questionInt(`Enter input ${i + 1}: `);
     inputs.push(input);
@@ -200,7 +202,7 @@ async function performHomomorphicEncryption(
 async function main() {
   while (true) {
     // Get user inputs
-    const inputs = getUserInputs();
+    const inputs = getUserInputs(2);
 
     // Get homomorphic operation choice from the user
     const operation = getHomomorphicOperation();
