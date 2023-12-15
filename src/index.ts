@@ -3,11 +3,30 @@ import SEAL from "node-seal";
 import { CipherText } from "node-seal/implementation/cipher-text";
 import { PlainText } from "node-seal/implementation/plain-text";
 import { SEALLibrary } from "node-seal/implementation/seal";
-
+import { ComprModeType } from "node-seal/implementation/compr-mode-type";
 // Define input values
 const INPUT1 = 50;
 const INPUT2 = 100;
 const CONSOLE_PRINT_ENCRYPTED_STRING = true;
+
+function getComprModeType(
+  compression: "none" | "zlib" | "zstd",
+  { ComprModeType }: { ComprModeType: ComprModeType }
+) {
+  switch (compression) {
+    case "none":
+      return ComprModeType.none;
+
+    case "zlib":
+      return ComprModeType.zlib;
+
+    case "zstd":
+      return ComprModeType.zstd;
+
+    default:
+      return ComprModeType.zstd;
+  }
+}
 
 // Function to set up homomorphic encryption
 function setupHomomorphicEncryption(seal: SEALLibrary) {
@@ -99,7 +118,9 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
   CONSOLE_PRINT_ENCRYPTED_STRING
     ? console.log(
         "Encrypted (Homomorphic Add):",
-        homographicEncryptedSum.save()
+        homographicEncryptedSum.save(
+          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
+        )
       )
     : "";
 
@@ -118,7 +139,9 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
   CONSOLE_PRINT_ENCRYPTED_STRING
     ? console.log(
         "Encrypted (Homomorphic Subtraction):",
-        homographicEncryptedSub.save()
+        homographicEncryptedSub.save(
+          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
+        )
       )
     : "";
 
@@ -140,7 +163,9 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
   CONSOLE_PRINT_ENCRYPTED_STRING
     ? console.log(
         "Encrypted (Homomorphic Multiply):",
-        homographicEncryptedMultiply.save()
+        homographicEncryptedMultiply.save(
+          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
+        )
       )
     : "";
 
