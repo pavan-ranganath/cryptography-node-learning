@@ -5,9 +5,10 @@ import { PlainText } from "node-seal/implementation/plain-text";
 import { SEALLibrary } from "node-seal/implementation/seal";
 import { ComprModeType } from "node-seal/implementation/compr-mode-type";
 import * as readlineSync from "readline-sync"; // Import readline-sync module
+import * as fs from "fs"; // Import the fs module
 
 // Define input values
-const CONSOLE_PRINT_ENCRYPTED_STRING = false;
+const CONSOLE_PRINT_ENCRYPTED_STRING = true;
 
 // Function to take inputs from the user
 function getUserInputs() {
@@ -52,6 +53,13 @@ function getComprModeType(
     default:
       return ComprModeType.zstd;
   }
+}
+// Function to write the encrypted string to a file
+function writeEncryptedStringToFile(cipherText: CipherText, fileName: string) {
+  const encryptedString = cipherText.save();
+
+  fs.writeFileSync(fileName, encryptedString);
+  console.log(`Encrypted string has been written to ${fileName}`);
 }
 
 // Function to set up homomorphic encryption
@@ -107,9 +115,19 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
 
   return { context, encoder, evaluator, encryptor, decryptor };
 }
+// Function to get a summary of the encrypted data
+function getEncryptedSummary(cipherText: CipherText) {
+  const compressedString = cipherText.save();
 
+  // Display only the first 100 characters for brevity
+  const summary = compressedString.substring(0, 100);
+  return summary + " ... (truncated)";
+}
 // Main function for homomorphic encryption
-async function performHomomorphicEncryption(inputs:number[], operation:string) {
+async function performHomomorphicEncryption(
+  inputs: number[],
+  operation: string
+) {
   // Initialize SEAL library
   const seal = await SEAL();
 
@@ -121,13 +139,17 @@ async function performHomomorphicEncryption(inputs:number[], operation:string) {
   const inputArrays = inputs.map((input) => Int32Array.from([input]));
 
   // Encode plaintexts
-  const plainTexts = inputArrays.map((array) => encoder.encode(array) as PlainText);
+  const plainTexts = inputArrays.map(
+    (array) => encoder.encode(array) as PlainText
+  );
 
   // Print plaintexts
   console.log("Plaintexts:", inputArrays);
 
   // Encrypt plaintexts
-  const cipherTexts = plainTexts.map((plainText) => encryptor.encrypt(plainText) as CipherText);
+  const cipherTexts = plainTexts.map(
+    (plainText) => encryptor.encrypt(plainText) as CipherText
+  );
 
   // Perform the selected homomorphic operation
   let result = cipherTexts[0]; // Initialize result with the first ciphertext
@@ -137,10 +159,10 @@ async function performHomomorphicEncryption(inputs:number[], operation:string) {
         result = evaluator.add(result, cipherTexts[i]) as CipherText;
         break;
       case "sub":
-        result = evaluator.sub(result, cipherTexts[i])as CipherText;
+        result = evaluator.sub(result, cipherTexts[i]) as CipherText;
         break;
       case "multiply":
-        result = evaluator.multiply(result, cipherTexts[i])as CipherText;
+        result = evaluator.multiply(result, cipherTexts[i]) as CipherText;
         break;
       default:
         console.error("Invalid operation choice.");
@@ -152,15 +174,22 @@ async function performHomomorphicEncryption(inputs:number[], operation:string) {
     return;
   }
 
-  CONSOLE_PRINT_ENCRYPTED_STRING
-    ? console.log(
-        `Encrypted (Homomorphic ${operation}):`,
-        result.save(
-          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
-        )
-      )
-    : "";
+  if (CONSOLE_PRINT_ENCRYPTED_STRING) {
+    const encryptedSummary = getEncryptedSummary(result);
+    console.log(
+      `Encrypted (Homomorphic ${operation}) Summary:`,
+      encryptedSummary
+    );
 
+    // Ask the user if they want to write the whole encrypted string to a file
+    const writeToFileChoice = readlineSync.keyInYNStrict(
+      "Do you want to write the whole encrypted string to a file?"
+    );
+    if (writeToFileChoice) {
+      const fileName = readlineSync.question("Enter the file name: ");
+      writeEncryptedStringToFile(result, fileName);
+    }
+  }
   // Decrypt and print the result
   const decryptedPlainText = decryptor.decrypt(result) as PlainText;
   const decodedArray = encoder.decode(decryptedPlainText);
@@ -180,7 +209,9 @@ async function main() {
     await performHomomorphicEncryption(inputs, operation);
 
     // Ask the user if they want to continue
-    const continueChoice = readlineSync.keyInYNStrict("Do you want to continue?");
+    const continueChoice = readlineSync.keyInYNStrict(
+      "Do you want to continue?"
+    );
     if (!continueChoice) {
       console.log("Exiting program. Goodbye!");
       break;
