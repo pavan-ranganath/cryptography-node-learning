@@ -145,9 +145,6 @@ async function performHomomorphicEncryption(
     (array) => encoder.encode(array) as PlainText
   );
 
-  // Print plaintexts
-  console.log("Plaintexts:", inputArrays);
-
   // Encrypt plaintexts
   const cipherTexts = plainTexts.map(
     (plainText) => encryptor.encrypt(plainText) as CipherText
