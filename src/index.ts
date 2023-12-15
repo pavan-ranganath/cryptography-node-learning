@@ -4,11 +4,34 @@ import { CipherText } from "node-seal/implementation/cipher-text";
 import { PlainText } from "node-seal/implementation/plain-text";
 import { SEALLibrary } from "node-seal/implementation/seal";
 import { ComprModeType } from "node-seal/implementation/compr-mode-type";
-// Define input values
-const INPUT1 = 50;
-const INPUT2 = 100;
-const CONSOLE_PRINT_ENCRYPTED_STRING = true;
+import * as readlineSync from "readline-sync"; // Import readline-sync module
 
+// Define input values
+const CONSOLE_PRINT_ENCRYPTED_STRING = false;
+
+// Function to take inputs from the user
+function getUserInputs() {
+  // Get user input for INPUT1
+  const INPUT1 = readlineSync.questionInt("Enter the first input: ");
+
+  // Get user input for INPUT2
+  const INPUT2 = readlineSync.questionInt("Enter the second input: ");
+
+  return { INPUT1, INPUT2 };
+}
+// Function to get the homomorphic operation choice from the user
+function getHomomorphicOperation() {
+  const operations = ["add", "sub", "multiply"];
+  const index = readlineSync.keyInSelect(
+    operations,
+    "Choose a homomorphic operation:"
+  );
+  if (index === -1) {
+    console.log("Operation selection canceled. Exiting.");
+    process.exit(0);
+  }
+  return operations[index];
+}
 function getComprModeType(
   compression: "none" | "zlib" | "zstd",
   { ComprModeType }: { ComprModeType: ComprModeType }
@@ -82,8 +105,12 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
   return { context, encoder, evaluator, encryptor, decryptor };
 }
 
-// Main asynchronous function
-(async () => {
+// Main function for homomorphic encryption
+async function performHomomorphicEncryption(
+  INPUT1: number,
+  INPUT2: number,
+  operation: string
+) {
   // Initialize SEAL library
   const seal = await SEAL();
 
@@ -92,11 +119,8 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
     setupHomomorphicEncryption(seal);
 
   // Define input arrays
-  var in1 = [INPUT1];
-  var in2 = [INPUT2];
-
-  const array1 = Int32Array.from(in1);
-  const array2 = Int32Array.from(in2);
+  const array1 = Int32Array.from([INPUT1]);
+  const array2 = Int32Array.from([INPUT2]);
 
   // Encode plaintexts
   const plainText1 = encoder.encode(array1) as PlainText;
@@ -107,72 +131,65 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
   console.log("Plaintext 2:", array2);
 
   // Encrypt plaintexts
-  var cipherText1 = encryptor.encrypt(plainText1) as CipherText;
-  var cipherText2 = encryptor.encrypt(plainText2) as CipherText;
+  const cipherText1 = encryptor.encrypt(plainText1) as CipherText;
+  const cipherText2 = encryptor.encrypt(plainText2) as CipherText;
 
-  // Homomorphic addition
-  var homographicEncryptedSum = evaluator.add(cipherText1, cipherText2);
-  if (!homographicEncryptedSum) {
+  // Perform the selected homomorphic operation
+  let result;
+  switch (operation) {
+    case "add":
+      result = evaluator.add(cipherText1, cipherText2);
+      break;
+    case "sub":
+      result = evaluator.sub(cipherText1, cipherText2);
+      break;
+    case "multiply":
+      result = evaluator.multiply(cipherText1, cipherText2);
+      break;
+    default:
+      console.error("Invalid operation choice.");
+      return;
+  }
+
+  if (!result) {
     return;
   }
+
   CONSOLE_PRINT_ENCRYPTED_STRING
     ? console.log(
-        "Encrypted (Homomorphic Add):",
-        homographicEncryptedSum.save(
+        `Encrypted (Homomorphic ${operation}):`,
+        result.save(
           getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
         )
       )
     : "";
 
-  // Decrypt and print result of addition
-  var decryptedSumPlainText = decryptor.decrypt(
-    homographicEncryptedSum
-  ) as PlainText;
-  var decodedSumArray = encoder.decode(decryptedSumPlainText);
-  console.log("Decrypted (Homomorphic Add): ", decodedSumArray[0]);
+  // Decrypt and print the result
+  const decryptedPlainText = decryptor.decrypt(result) as PlainText;
+  const decodedArray = encoder.decode(decryptedPlainText);
+  console.log(`Decrypted (Homomorphic ${operation}): `, decodedArray[0]);
+}
+// Main asynchronous function
+// Main asynchronous function
+async function main() {
+  while (true) {
+    // Get user inputs
+    const { INPUT1, INPUT2 } = getUserInputs();
 
-  // Homomorphic subtraction
-  var homographicEncryptedSub = evaluator.sub(cipherText1, cipherText2);
-  if (!homographicEncryptedSub) {
-    return;
+    // Get homomorphic operation choice from the user
+    const operation = getHomomorphicOperation();
+
+    // Perform homomorphic encryption with user inputs
+    await performHomomorphicEncryption(INPUT1, INPUT2, operation);
+
+    // Ask the user if they want to continue
+    const continueChoice = readlineSync.keyInYNStrict("Do you want to continue?");
+    if (!continueChoice) {
+      console.log("Exiting program. Goodbye!");
+      break;
+    }
   }
-  CONSOLE_PRINT_ENCRYPTED_STRING
-    ? console.log(
-        "Encrypted (Homomorphic Subtraction):",
-        homographicEncryptedSub.save(
-          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
-        )
-      )
-    : "";
+}
 
-  // Decrypt and print result of subtraction
-  var decryptedSubPlainText = decryptor.decrypt(
-    homographicEncryptedSub
-  ) as PlainText;
-  var decodedSubArray = encoder.decode(decryptedSubPlainText);
-  console.log("Decrypted (Homomorphic Subtraction): ", decodedSubArray[0]);
-
-  // Homomorphic multiplication
-  var homographicEncryptedMultiply = evaluator.multiply(
-    cipherText1,
-    cipherText2
-  );
-  if (!homographicEncryptedMultiply) {
-    return;
-  }
-  CONSOLE_PRINT_ENCRYPTED_STRING
-    ? console.log(
-        "Encrypted (Homomorphic Multiply):",
-        homographicEncryptedMultiply.save(
-          getComprModeType("zlib", { ComprModeType: seal.ComprModeType })
-        )
-      )
-    : "";
-
-  // Decrypt and print result of multiplication
-  var decryptedMultiplyPlainText = decryptor.decrypt(
-    homographicEncryptedMultiply
-  ) as PlainText;
-  var decodedMultiplyArray = encoder.decode(decryptedMultiplyPlainText);
-  console.log("Decrypted (Homomorphic Multiply): ", decodedMultiplyArray[0]);
-})();
+// Run the main asynchronous function
+main().catch((error) => console.error(error));

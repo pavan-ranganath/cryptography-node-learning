@@ -14,12 +14,14 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.10.4",
+    "@types/readline-sync": "^1.4.8",
     "nodemon": "^3.0.2",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "node-seal": "^5.1.2"
+    "node-seal": "^5.1.2",
+    "readline-sync": "^1.4.10"
   }
 }
