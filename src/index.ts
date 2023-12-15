@@ -11,14 +11,17 @@ const CONSOLE_PRINT_ENCRYPTED_STRING = false;
 
 // Function to take inputs from the user
 function getUserInputs() {
-  // Get user input for INPUT1
-  const INPUT1 = readlineSync.questionInt("Enter the first input: ");
+  const numInputs = readlineSync.questionInt("Enter the number of inputs: ");
+  const inputs = [];
 
-  // Get user input for INPUT2
-  const INPUT2 = readlineSync.questionInt("Enter the second input: ");
+  for (let i = 0; i < numInputs; i++) {
+    const input = readlineSync.questionInt(`Enter input ${i + 1}: `);
+    inputs.push(input);
+  }
 
-  return { INPUT1, INPUT2 };
+  return inputs;
 }
+
 // Function to get the homomorphic operation choice from the user
 function getHomomorphicOperation() {
   const operations = ["add", "sub", "multiply"];
@@ -106,11 +109,7 @@ function setupHomomorphicEncryption(seal: SEALLibrary) {
 }
 
 // Main function for homomorphic encryption
-async function performHomomorphicEncryption(
-  INPUT1: number,
-  INPUT2: number,
-  operation: string
-) {
+async function performHomomorphicEncryption(inputs:number[], operation:string) {
   // Initialize SEAL library
   const seal = await SEAL();
 
@@ -119,36 +118,34 @@ async function performHomomorphicEncryption(
     setupHomomorphicEncryption(seal);
 
   // Define input arrays
-  const array1 = Int32Array.from([INPUT1]);
-  const array2 = Int32Array.from([INPUT2]);
+  const inputArrays = inputs.map((input) => Int32Array.from([input]));
 
   // Encode plaintexts
-  const plainText1 = encoder.encode(array1) as PlainText;
-  const plainText2 = encoder.encode(array2) as PlainText;
+  const plainTexts = inputArrays.map((array) => encoder.encode(array) as PlainText);
 
   // Print plaintexts
-  console.log("Plaintext 1:", array1);
-  console.log("Plaintext 2:", array2);
+  console.log("Plaintexts:", inputArrays);
 
   // Encrypt plaintexts
-  const cipherText1 = encryptor.encrypt(plainText1) as CipherText;
-  const cipherText2 = encryptor.encrypt(plainText2) as CipherText;
+  const cipherTexts = plainTexts.map((plainText) => encryptor.encrypt(plainText) as CipherText);
 
   // Perform the selected homomorphic operation
-  let result;
-  switch (operation) {
-    case "add":
-      result = evaluator.add(cipherText1, cipherText2);
-      break;
-    case "sub":
-      result = evaluator.sub(cipherText1, cipherText2);
-      break;
-    case "multiply":
-      result = evaluator.multiply(cipherText1, cipherText2);
-      break;
-    default:
-      console.error("Invalid operation choice.");
-      return;
+  let result = cipherTexts[0]; // Initialize result with the first ciphertext
+  for (let i = 1; i < cipherTexts.length; i++) {
+    switch (operation) {
+      case "add":
+        result = evaluator.add(result, cipherTexts[i]) as CipherText;
+        break;
+      case "sub":
+        result = evaluator.sub(result, cipherTexts[i])as CipherText;
+        break;
+      case "multiply":
+        result = evaluator.multiply(result, cipherTexts[i])as CipherText;
+        break;
+      default:
+        console.error("Invalid operation choice.");
+        return;
+    }
   }
 
   if (!result) {
@@ -169,18 +166,18 @@ async function performHomomorphicEncryption(
   const decodedArray = encoder.decode(decryptedPlainText);
   console.log(`Decrypted (Homomorphic ${operation}): `, decodedArray[0]);
 }
-// Main asynchronous function
+
 // Main asynchronous function
 async function main() {
   while (true) {
     // Get user inputs
-    const { INPUT1, INPUT2 } = getUserInputs();
+    const inputs = getUserInputs();
 
     // Get homomorphic operation choice from the user
     const operation = getHomomorphicOperation();
 
     // Perform homomorphic encryption with user inputs
-    await performHomomorphicEncryption(INPUT1, INPUT2, operation);
+    await performHomomorphicEncryption(inputs, operation);
 
     // Ask the user if they want to continue
     const continueChoice = readlineSync.keyInYNStrict("Do you want to continue?");
